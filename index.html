@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Calendario Familiar</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #ffffff;
+      --bg2: #f5f5f3;
+      --bg3: #eeede9;
+      --text: #1a1a18;
+      --text2: #6b6b67;
+      --border: rgba(0,0,0,0.12);
+      --border2: rgba(0,0,0,0.22);
+      --radius: 8px;
+      --radius-lg: 12px;
+    }
+
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg3); color: var(--text); min-height: 100vh; }
+
+    .container { max-width: 1100px; margin: 0 auto; padding: 1.5rem 1rem; }
+
+    .header { margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 8px; }
+    .header h1 { font-size: 24px; font-weight: 600; }
+    .header p { font-size: 14px; color: var(--text2); margin-top: 2px; }
+    .save-badge { font-size: 12px; color: var(--text2); background: var(--bg2); border-radius: var(--radius); padding: 4px 12px; border: 1px solid var(--border); }
+    .save-badge.saved { color: #0F6E56; background: #E1F5EE; border-color: #5DCAA5; }
+
+    .tabs { display: flex; gap: 4px; margin-bottom: 1.5rem; flex-wrap: wrap; }
+    .tab { padding: 7px 18px; border-radius: var(--radius); font-size: 14px; cursor: pointer; border: 1px solid var(--border); background: transparent; color: var(--text2); transition: all 0.15s; }
+    .tab:hover { background: var(--bg2); }
+    .tab.active { background: var(--text); color: var(--bg); border-color: transparent; }
+
+    .section { display: none; }
+    .section.active { display: block; }
+
+    .panel { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 1.25rem; margin-bottom: 1rem; }
+    .panel-title { font-size: 11px; font-weight: 600; color: var(--text2); margin-bottom: 14px; text-transform: uppercase; letter-spacing: 0.08em; }
+
+    .field { margin-bottom: 12px; }
+    .field label { font-size: 13px; color: var(--text2); display: block; margin-bottom: 5px; }
+    .field input, .field select, .field textarea {
+      width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius);
+      font-size: 14px; background: var(--bg); color: var(--text); font-family: inherit;
+    }
+    .field input:focus, .field select:focus, .field textarea:focus { outline: none; border-color: var(--border2); }
+    .field textarea { resize: vertical; min-height: 80px; }
+
+    .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+
+    .btn-primary { background: var(--text); color: var(--bg); border: none; border-radius: var(--radius); padding: 9px 20px; font-size: 14px; font-weight: 500; cursor: pointer; transition: opacity 0.15s; }
+    .btn-primary:hover { opacity: 0.82; }
+    .btn-secondary { background: transparent; color: var(--text); border: 1px solid var(--border2); border-radius: var(--radius); padding: 8px 16px; font-size: 14px; cursor: pointer; }
+    .btn-secondary:hover { background: var(--bg2); }
+    .btn-danger { background: transparent; color: #D85A30; border: 1px solid #D85A30; border-radius: var(--radius); padding: 5px 10px; font-size: 13px; cursor: pointer; }
+    .btn-add { background: transparent; border: 1px dashed var(--border2); border-radius: var(--radius); padding: 8px; font-size: 13px; cursor: pointer; color: var(--text2); width: 100%; margin-top: 8px; }
+    .btn-add:hover { background: var(--bg2); }
+    .btn-row { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+
+    .turno-block { background: var(--bg2); border-radius: var(--radius); padding: 12px; margin-bottom: 10px; }
+    .turno-block-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+    .turno-block-header span { font-size: 13px; font-weight: 500; }
+
+    /* Calendario */
+    .legend { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 1rem; }
+    .legend-item { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text2); }
+    .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+    .dot-yanina { background: #5DCAA5; }
+    .dot-family { background: #AFA9EC; }
+    .dot-cesar { background: #378ADD; }
+    .dot-franco { background: #F0997B; }
+
+    .nav-row { display: flex; align-items: center; gap: 12px; margin-bottom: 1rem; }
+    .nav-row button { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 7px 16px; font-size: 14px; cursor: pointer; color: var(--text); }
+    .nav-row button:hover { background: var(--bg2); }
+    .nav-row h2 { font-size: 20px; font-weight: 600; flex: 1; text-align: center; }
+
+    .cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+    .cal-header-cell { text-align: center; font-size: 12px; font-weight: 600; color: var(--text2); padding: 6px 0; }
+
+    .cal-day { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 5px; cursor: pointer; display: flex; flex-direction: column; min-height: 84px; transition: border-color 0.1s; }
+    .cal-day:hover { border-color: var(--border2); }
+    .cal-day.other-month { opacity: 0.2; pointer-events: none; }
+    .cal-day.today { border-color: #378ADD; border-width: 2px; }
+
+    .day-num { font-size: 12px; font-weight: 600; color: var(--text2); margin-bottom: 3px; text-align: right; }
+    .day-rows { display: flex; flex-direction: column; gap: 2px; flex: 1; }
+    .day-row { border-radius: 3px; padding: 2px 4px; font-size: 10px; font-weight: 600; min-height: 18px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .day-row-yanina { background: #E1F5EE; color: #0F6E56; }
+    .day-row-yanina.franco { background: #FAECE7; color: #993C1D; }
+    .day-row-family { background: var(--bg2); color: var(--text2); border: 1px dashed var(--border); }
+    .day-row-family.has-event { background: #EEEDFE; color: #3C3489; border: none; }
+    .day-row-cesar { background: #E6F1FB; color: #185FA5; }
+    .day-row-cesar.franco { background: #FAECE7; color: #993C1D; }
+    .day-click-info { font-size: 13px; color: var(--text2); margin-top: 10px; text-align: center; }
+
+    /* Modal */
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.35); z-index: 100; align-items: center; justify-content: center; }
+    .modal-overlay.open { display: flex; }
+    .modal { background: var(--bg); border-radius: var(--radius-lg); border: 1px solid var(--border); padding: 1.5rem; width: 340px; max-width: 95vw; }
+    .modal h3 { font-size: 16px; font-weight: 600; margin-bottom: 14px; }
+    .modal-btns { display: flex; gap: 8px; margin-top: 16px; justify-content: flex-end; }
+
+    /* Voz/texto */
+    .quien-sel { display: flex; gap: 8px; justify-content: center; margin-bottom: 1.2rem; }
+    .quien-btn { padding: 7px 22px; border-radius: var(--radius); font-size: 14px; cursor: pointer; border: 1px solid var(--border); background: transparent; color: var(--text2); }
+    .quien-btn.active-y { background: #E1F5EE; color: #0F6E56; border-color: #5DCAA5; font-weight: 500; }
+    .quien-btn.active-c { background: #E6F1FB; color: #185FA5; border-color: #378ADD; font-weight: 500; }
+    .ejemplo-box { background: var(--bg2); border-radius: var(--radius); padding: 10px 14px; font-size: 13px; color: var(--text2); margin-bottom: 1rem; border-left: 3px solid #5DCAA5; }
+    .ia-result { background: #E1F5EE; border-radius: var(--radius); padding: 14px; font-size: 13px; color: #0F6E56; margin-bottom: 1rem; display: none; line-height: 1.7; }
+    .ia-result.visible { display: block; }
+    .error-box { background: #FCEBEB; border-radius: var(--radius); padding: 12px; font-size: 13px; color: #A32D2D; margin-bottom: 1rem; display: none; }
+    .error-box.visible { display: block; }
+
+    @media (max-width: 600px) {
+      .row2, .row3 { grid-template-columns: 1fr; }
+      .cal-day { min-height: 64px; }
+      .day-row { font-size: 9px; }
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <div>
+      <h1>Calendario familiar</h1>
+      <p>Yanina y César</p>
+    </div>
+    <div class="save-badge" id="save-badge">cargando...</div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="setTab('calendario')">Calendario</button>
+    <button class="tab" onclick="setTab('voz')">🎤 Cargar por texto</button>
+    <button class="tab" onclick="setTab('yanina')">Turnos Yanina</button>
+    <button class="tab" onclick="setTab('cesar')">Mis turnos (César)</button>
+  </div>
+
+  <div class="section active" id="sec-calendario">
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot dot-yanina"></div>Yanina (arriba)</div>
+      <div class="legend-item"><div class="legend-dot dot-cesar"></div>César (abajo)</div>
+      <div class="legend-item"><div class="legend-dot dot-family"></div>Familiar (medio)</div>
+      <div class="legend-item"><div class="legend-dot dot-franco"></div>Franco</div>
+    </div>
+    <div class="nav-row">
+      <button onclick="changeMonth(-1)">&#8592;</button>
+      <h2 id="month-title"></h2>
+      <button onclick="changeMonth(1)">&#8594;</button>
+    </div>
+    <div class="cal-grid" id="cal-headers"></div>
+    <div class="cal-grid" id="cal-days" style="margin-top:4px;"></div>
+    <p class="day-click-info">Hacé clic en cualquier día para agregar una actividad familiar</p>
+  </div>
+
+  <div class="section" id="sec-voz">
+    <div class="panel">
+      <div class="panel-title">Cargar turnos en lenguaje natural</div>
+      <div class="quien-sel">
+        <button class="quien-btn active-y" id="btn-yanina" onclick="setQuien('yanina')">Yanina</button>
+        <button class="quien-btn" id="btn-cesar" onclick="setQuien('cesar')">César</button>
+      </div>
+      <div class="ejemplo-box" id="ejemplo-text">
+        Ejemplo: <em>"trabajo de 14 a 22, los días 5, 6 y 7 trabajo de 22 a 6, franco los días 12, 13, 19 y 20"</em>
+      </div>
+      <div class="field">
+        <label>Mes</label>
+        <input type="month" id="voz-mes" style="max-width:200px;" />
+      </div>
+      <div class="field">
+        <label>Describí los turnos</label>
+        <textarea id="voz-texto" placeholder="Ej: trabajo de 13:30 a 21:30, los días 5 y 6 trabajo de 22 a 6, franco los días 7, 8, 14, 15, 21, 22, 28 y 29"></textarea>
+      </div>
+      <div class="ia-result" id="ia-result"></div>
+      <div class="error-box" id="error-box"></div>
+      <div class="btn-row">
+        <button class="btn-primary" onclick="interpretarTexto()">Interpretar</button>
+        <button class="btn-secondary" id="btn-aplicar" onclick="aplicarTurnos()" style="display:none;">Aplicar al calendario ✓</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="section" id="sec-yanina">
+    <div class="panel">
+      <div class="panel-title">Configurar mes — Yanina</div>
+      <div class="row2">
+        <div class="field"><label>Mes y año</label><input type="month" id="y-mes" /></div>
+        <div class="field"><label>Días francos</label><input type="text" id="y-francos" placeholder="7,8,14,15,21,22" /></div>
+      </div>
+      <div class="panel-title" style="margin-top:8px;">Bloques de turno</div>
+      <div id="y-turnos"></div>
+      <button class="btn-add" onclick="addTurnoBlock('y')">+ Agregar bloque</button>
+      <div class="btn-row"><button class="btn-primary" onclick="cargarTurnos('yanina')">Guardar y ver calendario</button></div>
+    </div>
+  </div>
+
+  <div class="section" id="sec-cesar">
+    <div class="panel">
+      <div class="panel-title">Configurar mes — César</div>
+      <div class="row2">
+        <div class="field"><label>Mes y año</label><input type="month" id="c-mes" /></div>
+        <div class="field"><label>Días francos</label><input type="text" id="c-francos" placeholder="7,8,14,15,21,22" /></div>
+      </div>
+      <div class="panel-title" style="margin-top:8px;">Bloques de turno</div>
+      <div id="c-turnos"></div>
+      <button class="btn-add" onclick="addTurnoBlock('c')">+ Agregar bloque</button>
+      <div class="btn-row"><button class="btn-primary" onclick="cargarTurnos('cesar')">Guardar y ver calendario</button></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
+  <div class="modal">
+    <h3 id="modal-title">Agregar actividad familiar</h3>
+    <div class="field"><label>Descripción</label><input type="text" id="ev-desc" placeholder="Ej: Cumpleaños mamá, médico..." /></div>
+    <div class="row2">
+      <div class="field"><label>Hora inicio</label><input type="time" id="ev-inicio" /></div>
+      <div class="field"><label>Hora fin</label><input type="time" id="ev-fin" /></div>
+    </div>
+    <div class="modal-btns">
+      <button class="btn-secondary" onclick="closeModal()">Cancelar</button>
+      <button class="btn-primary" onclick="saveEvent()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const DAYS=['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+const MONTHS=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+const STORAGE_KEY='cal-fam-events';
+const CURRENT_KEY='cal-fam-current';
+
+let currentDate=new Date(), events={}, selectedDay=null;
+let yCount=0, cCount=0, quienVoz='yanina', turnosIA=null;
+
+function key(y,m,d){return `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;}
+
+function setBadge(text,saved=false){
+  const b=document.getElementById('save-badge');
+  b.textContent=text; b.className='save-badge'+(saved?' saved':'');
+}
+
+function saveData(){
+  try{
+    localStorage.setItem(STORAGE_KEY,JSON.stringify(events));
+    localStorage.setItem(CURRENT_KEY,JSON.stringify({y:currentDate.getFullYear(),m:currentDate.getMonth()}));
+    setBadge('guardado ✓',true);
+    setTimeout(()=>setBadge('auto-guardado',false),2000);
+  }catch(e){setBadge('error al guardar');}
+}
+
+function loadData(){
+  try{
+    const ev=localStorage.getItem(STORAGE_KEY);
+    if(ev)events=JSON.parse(ev);
+    const cur=localStorage.getItem(CURRENT_KEY);
+    if(cur){const{y,m}=JSON.parse(cur);currentDate=new Date(y,m,1);}
+    setBadge('datos cargados',true);
+    setTimeout(()=>setBadge('auto-guardado',false),1500);
+  }catch(e){setBadge('nuevo calendario',false);}
+  renderCal();
+}
+
+function setTab(tab){
+  ['calendario','voz','yanina','cesar'].forEach((t,i)=>{
+    document.querySelectorAll('.tab')[i].classList.toggle('active',t===tab);
+    document.getElementById(`sec-${t}`).classList.toggle('active',t===tab);
+  });
+}
+
+function setQuien(quien){
+  quienVoz=quien;
+  document.getElementById('btn-yanina').className='quien-btn'+(quien==='yanina'?' active-y':'');
+  document.getElementById('btn-cesar').className='quien-btn'+(quien==='cesar'?' active-c':'');
+  document.getElementById('ejemplo-text').innerHTML=quien==='yanina'
+    ?'Ejemplo: <em>"trabajo de 14 a 22, los días 5, 6 y 7 de 22 a 6, franco los días 12, 13, 19 y 20"</em>'
+    :'Ejemplo: <em>"trabajo de 5:30 a 13:30, franco los días 7, 8, 14 y 15"</em>';
+}
+
+function changeMonth(d){
+  currentDate=new Date(currentDate.getFullYear(),currentDate.getMonth()+d,1);
+  saveData(); renderCal();
+}
+
+function addTurnoBlock(prefix){
+  const container=document.getElementById(`${prefix}-turnos`);
+  const id=prefix==='y'?++yCount:++cCount;
+  const div=document.createElement('div');
+  div.className='turno-block';
+  div.innerHTML=`<div class="turno-block-header"><span>Bloque ${id}</span><button class="btn-danger" onclick="this.closest('.turno-block').remove()">Quitar</button></div>
+  <div class="row3">
+    <div class="field"><label>Días (ej: 5,6,7 o 1-31)</label><input type="text" class="dias-input" placeholder="1-31"/></div>
+    <div class="field"><label>Hora inicio</label><input type="time" class="inicio-input"/></div>
+    <div class="field"><label>Hora fin</label><input type="time" class="fin-input"/></div>
+  </div>`;
+  container.appendChild(div);
+}
+
+function parseDias(str){
+  const dias=new Set();
+  str.split(',').forEach(part=>{
+    part=part.trim();
+    if(part.includes('-')){const[a,b]=part.split('-').map(Number);for(let i=a;i<=b;i++)dias.add(i);}
+    else{const n=parseInt(part);if(!isNaN(n))dias.add(n);}
+  });
+  return dias;
+}
+
+function parseHora(str){
+  str=str.trim();
+  const m=str.match(/(\d{1,2})(?:[:\.](\d{2}))?/);
+  if(!m)return null;
+  return `${String(parseInt(m[1])).padStart(2,'0')}:${m[2]?String(parseInt(m[2])).padStart(2,'0'):'00'}`;
+}
+
+function extraerNumeros(str){
+  const nums=[]; const re=/\b(\d{1,2})\b/g; let m;
+  while((m=re.exec(str))!==null){const n=parseInt(m[1]);if(n>=1&&n<=31)nums.push(n);}
+  return nums;
+}
+
+function interpretarTexto(){
+  const texto=document.getElementById('voz-texto').value.trim().toLowerCase();
+  const mesVal=document.getElementById('voz-mes').value;
+  const iaResult=document.getElementById('ia-result');
+  const errorBox=document.getElementById('error-box');
+  const btnAplicar=document.getElementById('btn-aplicar');
+  iaResult.classList.remove('visible'); errorBox.classList.remove('visible');
+  btnAplicar.style.display='none'; turnosIA=null;
+  if(!texto){errorBox.textContent='Escribí algo primero.';errorBox.classList.add('visible');return;}
+  if(!mesVal){errorBox.textContent='Elegí el mes primero.';errorBox.classList.add('visible');return;}
+  const [year,month]=mesVal.split('-').map(Number);
+  const daysInMonth=new Date(year,month,0).getDate();
+  let francos=new Set();
+  const francoSimple=texto.match(/franco[s]?\s+(?:los\s+)?d[ií]as?\s+([\d\s,ya]+)/i);
+  if(francoSimple)extraerNumeros(francoSimple[1]).forEach(n=>{if(n>=1&&n<=daysInMonth)francos.add(n);});
+  if(francos.size===0){
+    const francoMatch=texto.match(/franco[s]?[^.]*?(\d[\d\s,ya]+)/gi);
+    if(francoMatch)francoMatch.forEach(fm=>extraerNumeros(fm).forEach(n=>{if(n>=1&&n<=daysInMonth)francos.add(n);}));
+  }
+  const bloques=[];
+  const re1=/(?:los\s+d[ií]as?\s+)([\d\s,ya]+)[^,\.]*?(?:de|desde)\s+([\d:\.]+)\s*(?:a|hasta)\s*([\d:\.]+)/gi;
+  let m1; while((m1=re1.exec(texto))!==null){
+    const dias=extraerNumeros(m1[1]).filter(n=>n>=1&&n<=daysInMonth&&!francos.has(n));
+    const ini=parseHora(m1[2]),fin=parseHora(m1[3]);
+    if(dias.length&&ini&&fin)bloques.push({dias,ini,fin,especifico:true});
+  }
+  const re2=/(?:de|desde)\s+([\d:\.]+)\s*(?:a|hasta)\s*([\d:\.]+)[^,\.]*?(?:los\s+)?d[ií]as?\s+([\d\s,ya]+)/gi;
+  let m2; while((m2=re2.exec(texto))!==null){
+    const dias=extraerNumeros(m2[3]).filter(n=>n>=1&&n<=daysInMonth&&!francos.has(n));
+    const ini=parseHora(m2[1]),fin=parseHora(m2[2]);
+    if(dias.length&&ini&&fin)bloques.push({dias,ini,fin,especifico:true});
+  }
+  const reGen=/(?:de|desde)\s+([\d:\.]+)\s*(?:a|hasta)\s*([\d:\.]+)/gi;
+  let mG; while((mG=reGen.exec(texto))!==null){
+    const ini=parseHora(mG[1]),fin=parseHora(mG[2]);
+    if(ini&&fin&&!bloques.find(b=>!b.especifico&&b.ini===ini&&b.fin===fin))
+      bloques.push({dias:null,ini,fin,especifico:false});
+  }
+  if(bloques.length===0&&francos.size===0){
+    errorBox.textContent='No pude interpretar. Probá: "trabajo de 13:30 a 21:30, franco los días 7, 8, 14, 15"';
+    errorBox.classList.add('visible'); return;
+  }
+  const diasEsp=new Set();
+  bloques.filter(b=>b.especifico).forEach(b=>b.dias.forEach(d=>diasEsp.add(d)));
+  const turnoMap={};
+  bloques.filter(b=>b.especifico).forEach(b=>b.dias.forEach(d=>{turnoMap[d]=`${b.ini}-${b.fin}`;}));
+  const bloqueGen=bloques.find(b=>!b.especifico);
+  if(bloqueGen)for(let d=1;d<=daysInMonth;d++)if(!francos.has(d)&&!diasEsp.has(d))turnoMap[d]=`${bloqueGen.ini}-${bloqueGen.fin}`;
+  turnosIA={francos:[...francos],turnoMap,year,month:month-1};
+  let html='<strong>Interpreté esto:</strong><br><br>';
+  if(francos.size)html+=`Francos: días ${[...francos].sort((a,b)=>a-b).join(', ')}<br>`;
+  bloques.filter(b=>b.especifico).forEach(b=>{html+=`Turno especial días ${b.dias.join(', ')}: ${b.ini} a ${b.fin}<br>`;});
+  if(bloqueGen)html+=`Turno general: ${bloqueGen.ini} a ${bloqueGen.fin}<br>`;
+  html+=`<br>Días trabajados: ${Object.keys(turnoMap).length} | Francos: ${francos.size}`;
+  iaResult.innerHTML=html; iaResult.classList.add('visible'); btnAplicar.style.display='inline-block';
+}
+
+function aplicarTurnos(){
+  if(!turnosIA)return;
+  const{francos,turnoMap,year,month}=turnosIA;
+  const daysInMonth=new Date(year,month+1,0).getDate();
+  const evType=quienVoz;
+  for(let d=1;d<=daysInMonth;d++){
+    const k=key(year,month,d);
+    if(!events[k])events[k]={};
+    if(francos.includes(d))events[k][evType]={franco:true,label:'Franco'};
+    else if(turnoMap[d])events[k][evType]={franco:false,label:turnoMap[d]};
+  }
+  currentDate=new Date(year,month,1);
+  saveData(); setTab('calendario'); renderCal();
+  turnosIA=null;
+  document.getElementById('btn-aplicar').style.display='none';
+  document.getElementById('ia-result').classList.remove('visible');
+  document.getElementById('voz-texto').value='';
+}
+
+function cargarTurnos(persona){
+  const prefix=persona==='yanina'?'y':'c';
+  const mesEl=document.getElementById(`${prefix}-mes`);
+  const francosEl=document.getElementById(`${prefix}-francos`);
+  if(!mesEl.value){alert('Elegí el mes');return;}
+  const[year,month]=mesEl.value.split('-').map(Number);
+  const monthIdx=month-1,daysInMonth=new Date(year,month,0).getDate();
+  const francos=francosEl.value?parseDias(francosEl.value):new Set();
+  const bloques=document.querySelectorAll(`#${prefix}-turnos .turno-block`);
+  const turnoMap={};
+  bloques.forEach(b=>{
+    const diasStr=b.querySelector('.dias-input').value;
+    const inicio=b.querySelector('.inicio-input').value;
+    const fin=b.querySelector('.fin-input').value;
+    if(!diasStr||!inicio||!fin)return;
+    parseDias(diasStr).forEach(d=>{turnoMap[d]=`${inicio}-${fin}`;});
+  });
+  const evType=persona==='yanina'?'yanina':'cesar';
+  for(let d=1;d<=daysInMonth;d++){
+    const k=key(year,monthIdx,d);
+    if(!events[k])events[k]={};
+    if(francos.has(d))events[k][evType]={franco:true,label:'Franco'};
+    else if(turnoMap[d])events[k][evType]={franco:false,label:turnoMap[d]};
+    else delete events[k][evType];
+  }
+  currentDate=new Date(year,monthIdx,1);
+  saveData(); setTab('calendario'); renderCal();
+}
+
+function renderCal(){
+  const year=currentDate.getFullYear(),month=currentDate.getMonth();
+  document.getElementById('month-title').textContent=`${MONTHS[month]} ${year}`;
+  document.getElementById('cal-headers').innerHTML=DAYS.map(d=>`<div class="cal-header-cell">${d}</div>`).join('');
+  const firstDay=new Date(year,month,1).getDay();
+  const daysInMonth=new Date(year,month+1,0).getDate();
+  const daysInPrev=new Date(year,month,0).getDate();
+  const today=new Date();
+  let cells=[];
+  for(let i=firstDay-1;i>=0;i--)cells.push({day:daysInPrev-i,other:true});
+  for(let d=1;d<=daysInMonth;d++)cells.push({day:d,other:false});
+  while(cells.length%7!==0)cells.push({day:cells.length-daysInMonth-firstDay+1,other:true});
+  const grid=document.getElementById('cal-days');
+  grid.innerHTML='';
+  cells.forEach(({day,other})=>{
+    const k=key(year,month,day);
+    const evts=events[k]||{};
+    const isToday=!other&&day===today.getDate()&&month===today.getMonth()&&year===today.getFullYear();
+    const div=document.createElement('div');
+    div.className='cal-day'+(other?' other-month':'')+(isToday?' today':'');
+    if(!other)div.onclick=()=>openModal(k,day);
+    const yData=evts.yanina,cData=evts.cesar,famEvents=evts.family||[];
+    const yHtml=yData?`<div class="day-row day-row-yanina${yData.franco?' franco':''}">Y: ${yData.label}</div>`:`<div class="day-row day-row-yanina" style="opacity:0.1;"> </div>`;
+    const famHtml=famEvents.length?famEvents.map(e=>`<div class="day-row day-row-family has-event">${e.label}</div>`).join(''):`<div class="day-row day-row-family"> </div>`;
+    const cHtml=cData?`<div class="day-row day-row-cesar${cData.franco?' franco':''}">C: ${cData.label}</div>`:`<div class="day-row day-row-cesar" style="opacity:0.1;"> </div>`;
+    div.innerHTML=`<div class="day-num">${day}</div><div class="day-rows">${yHtml}${famHtml}${cHtml}</div>`;
+    grid.appendChild(div);
+  });
+}
+
+function openModal(k,day){
+  selectedDay=k;
+  document.getElementById('modal-title').textContent=`Actividad familiar — día ${day}`;
+  document.getElementById('ev-desc').value='';
+  document.getElementById('ev-inicio').value='';
+  document.getElementById('ev-fin').value='';
+  document.getElementById('modal-overlay').classList.add('open');
+}
+function closeModal(e){if(!e||e.target===document.getElementById('modal-overlay'))document.getElementById('modal-overlay').classList.remove('open');}
+function saveEvent(){
+  const desc=document.getElementById('ev-desc').value.trim();
+  if(!desc){alert('Escribí una descripción');return;}
+  const inicio=document.getElementById('ev-inicio').value,fin=document.getElementById('ev-fin').value;
+  const label=inicio?`${desc} ${inicio}${fin?'-'+fin:''}`:desc;
+  if(!events[selectedDay])events[selectedDay]={};
+  if(!events[selectedDay].family)events[selectedDay].family=[];
+  events[selectedDay].family.push({label});
+  saveData();
+  document.getElementById('modal-overlay').classList.remove('open');
+  renderCal();
+}
+
+const now=new Date(),pad=n=>String(n).padStart(2,'0');
+const mesVal=`${now.getFullYear()}-${pad(now.getMonth()+1)}`;
+document.getElementById('y-mes').value=mesVal;
+document.getElementById('c-mes').value=mesVal;
+document.getElementById('voz-mes').value=mesVal;
+addTurnoBlock('y'); addTurnoBlock('c');
+loadData();
+</script>
+</body>
+</html>
